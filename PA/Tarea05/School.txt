@@ -1,0 +1,15 @@
+Frodo B+ 50 A Matutino
+Aragorn A- 87 C Vespertino
+Legolas A 500 B Matutino
+Gimli B- 139 E Vespertino
+Sam B+ 38 D Matutino
+Gollum C- 500 B Vespertino
+Bilbo B 111 A Matutino
+Saruman C+ 2000 F Vespertino
+Boromir B- 40 C Matutino
+Galadriel A+ 7000 E Vespertino
+Meriadoc C+ 36 D Matutino
+Peregrin B- 28 A Vespertino
+Elrond A 6000 F Matutino
+Gandalf A+ 2000 B Vespertino
+Éowyn B+ 24 C Matutino

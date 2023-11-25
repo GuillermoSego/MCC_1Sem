@@ -1,0 +1,354 @@
+---
+title: "Tarea 11"
+author: "Guillermo Segura Gómez"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+## Problema 3
+Considera el siguiente modelo:
+$$
+Y=1+\beta \log (x)+\epsilon, \epsilon \sim \mathcal{N}(0,0.1 * x), \quad x>1
+$$
+
+Calcula a mano el estimador de Máxima Verosimilitud de $\beta$ usando la muestra $\left\{\left(y_i, x_i\right)\right\}$.
+¿Qué distribución tiene? (resolver hasta el martes)
+Supongamos que $n=30$ y $x_i=i, 2 \leq i \leq n+1$; genera diferentes muestras de este modelo; dibuja el modelo estimado; visualiza la distribución empirica de $\hat{Y}(10)$. Compáralo con lo que da el método 1-KNN. ¿Qué observas?
+
+### Solución
+
+La verosimilitud se define a partir de la distribución de los errores \(\epsilon\), que en este caso es una distribución normal con media cero y varianza dependiente de \(x\). Dado que \(\epsilon = Y - 1 - \beta \log(x)\), la verosimilitud para una observación individual es:
+   $$
+   L_i(\beta) = \frac{1}{\sqrt{2\pi \cdot 0.1x_i}} \exp\left(-\frac{(y_i - 1 - \beta \log(x_i))^2}{2 \cdot 0.1x_i}\right)
+   $$
+
+Encontramos la la log-verosimilitud para facilitar el cálculo. Es la suma de los logaritmos de las verosimilitudes individuales, se expresa como:
+   $$
+   \ell(\beta) = -\sum_i \left( \frac{(y_i - 1 - \beta \log(x_i))^2}{2 \cdot 0.1x_i} + \frac{1}{2} \log(2\pi \cdot 0.1x_i) \right)
+   $$
+
+Necesitamos encontrar la derivada de la función de verosimilitud. Al derivar la log-verosimilitud respecto a \(\beta\) y establecerla igual a cero para encontrar el máximo, obtenemos:
+   $$
+   \frac{\partial \ell(\beta)}{\partial \beta} = \sum_i \frac{(y_i - 1 - \beta \log(x_i)) \log(x_i)}{0.1x_i}
+   $$
+
+Ahora solucionamos para $\hat{\beta}$. Despejando \(\beta\) de la ecuación anterior, se llega a la fórmula del estimador de Máxima Verosimilitud:
+   $$
+   \hat{\beta} = \frac{\sum_i \frac{(y_i - 1) \log(x_i)}{x_i}}{\sum_i \frac{\log^2(x_i)}{x_i}}
+   $$
+Sustituyendo \(y_i = 1 + \beta \log(x_i) + \epsilon\) en la fórmula de \(\hat{\beta}\), se obtiene:
+   $$
+   \hat{\beta} = \beta + \epsilon \frac{\sum_i \frac{\log(x_i)}{x_i}}{\sum_i \frac{\log^2(x_i)}{x_i}}
+   $$
+De aquí, se concluye que \(\hat{\beta}\) sigue una distribución normal con media \(\beta\) y varianza dependiente de \(x_j\) y de los valores de \(x_i\) en la muestra:
+   $$
+   \hat{\beta} \sim \mathcal{N}\left(\beta, 0.1x_j \frac{\sum_i \frac{\log(x_i)}{x_i}}{\sum_i \frac{\log^2(x_i)}{x_i}}\right)
+   $$
+```{r}
+# Cargar las librerías necesarias
+library(ggplot2)
+library(class) # para KNN
+library(FNN)
+
+# Definir el número de muestras y el tamaño de cada muestra
+n_muestras <- 1000
+n <- 30
+
+# Inicializar un vector para almacenar los valores de Y_hat(10)
+y_hat_10 <- numeric(n_muestras)
+
+# Bucle para generar muestras y calcular Y_hat(10)
+set.seed(123) # Para reproducibilidad
+for (i in 1:n_muestras) {
+  x <- 2:(n + 1) # x_i
+  beta_real <- 1 # Valor real de beta
+  epsilon <- rnorm(n, mean = 0, sd = sqrt(0.1 * x))
+  y <- 1 + beta_real * log(x) + epsilon
+
+  # Estimar beta
+  beta_estimado <- sum((y - 1) * log(x) / x) / sum(log(x)^2 / x)
+
+  # Calcular Y_hat(10)
+  y_hat_10[i] <- 1 + beta_estimado * log(10)
+}
+
+# Visualizar la distribución de Y_hat(10)
+ggplot(data.frame(y_hat_10), aes(x = y_hat_10)) +
+  geom_histogram(bins = 30, fill = "blue", alpha = 0.7) +
+  labs(title = "Distribución de Y_hat(10)", x = "Y_hat(10)", y = "Frecuencia")
+
+# Comparación con 1-KNN
+knn_pred <- numeric(n_muestras)
+for (i in 1:n_muestras) {
+  x <- 2:(n + 1)
+  y <- 1 + beta_real * log(x) + rnorm(n, mean = 0, sd = sqrt(0.1 * x))
+  knn_pred[i] <- knn.reg(train = data.frame(x), test = data.frame(x = 10), y = y, k = 1)$pred
+}
+
+# Visualizar la distribución de las predicciones de 1-KNN
+ggplot(data.frame(knn_pred), aes(x = knn_pred)) +
+  geom_histogram(bins = 30, fill = "red", alpha = 0.7) +
+  labs(title = "Distribución de Predicciones 1-KNN para Y(10)", x = "Y(10)", y = "Frecuencia")
+
+```
+Ambos histogramas siguen una distribución normal, esto indica que, en promedio, ambos métodos están convergiendo hacia una predicción similar para \(\hat{Y}(10)\).
+
+## Problema 4 
+Considera los datos en datos.csv relacionados con elecciones pasadas en EE.UU. Contiene para muchas elecciones, el porcentaje de votos que el partido del presidente saliente obtuvo (Y) y el porcentaje de crecimiento económico medido en ingreso personal en el año previo a las elecciones (X). Busca y discute un modelo de regresión lineal adecuado para Y en función de X. Haz una predicción del porcentaje de votos para los demócratas en las elecciones entre Hillary y Trump, si sabes que la economía había crecido en 2015 2 \%.
+
+### Solución
+
+Vamos a utilizar los datos de las elecciones pasadas para entrenar un modelo que sea capaz de hacer una predicción. La regresión que se va calcular, busca encontrar una relación entre el crecimiento económico y el porcentaje de votos del partido saliente. 
+
+Primero necesitamos importar los datos.
+
+```{r}
+datos <- read.csv("datos(1).csv", sep = " ")
+datos
+```
+
+Ahora vamos a generar un modelo de regresión lineal para los datos.
+
+```{r}
+# Ajustar el modelo de regresión lineal
+modelo <- lm(vote ~ growth, data = datos)
+
+# Resumen del modelo para ver los coeficientes
+summary(modelo)
+
+```
+Antes de realizar el análisis vamos a graficar el dataset para ver el comportamiento de los datos.
+
+```{r}
+# Gráfico de dispersión
+plot(datos$growth, datos$vote, main = "Crecimiento Económico vs Porcentaje de Votos", 
+     xlab = "Crecimiento Económico (%)", ylab = "Porcentaje de Votos (%)", pch = 19)
+
+# Añadir la línea de regresión al gráfico
+abline(modelo, col = "red")
+
+```
+
+Es evidente una tendencia positiva del porcentaje de votos en función del crecimiento económico. 
+
+El modelo de regresión lineal se puede expresar como 
+
+$$
+Y  = \beta_0 + \beta_1 X + \epsilon  
+$$
+donde $Y$ es el porcentaje de votos, $X$ es el crecimiento económico. Los coeficientes calculados por el modelo son
+
+$$
+\beta_0 = 46.2476
+$$
+$$
+\beta_1 = 3.0605
+$$
+
+$\beta_0$ también llamado intercepto, es el valor de $Y$ cuando $X$es 0. Esto significa que si el crecimiento económico fuera 0\%, el modelo predice que el porcentaje de votos para el partido del presidente saliente sería aproximadamente 46.25\%.
+
+$\beta_1$ es la pendiente y es el cambio en $Y$ por cada unidad de cambio en $X$. Esto indica que por cada 1% de aumento en el crecimiento económico, el modelo predice un aumento de aproximadamente 3.06\% en el porcentaje de votos para el partido del presidente saliente.
+
+Para hacer una predicción, utilizamos el modelo.
+```{r}
+# Hacer una predicción
+prediccion <- predict(modelo, newdata = data.frame(growth = 2))
+
+# Imprimir la predicción
+print(prediccion)
+
+```
+
+El resultado obtenido para la predicción es de 52.3687. Esto se puede interpretar como lo siguiente: con un crecimiento económico del 2%, el partido del presidente saliente recibiría aproximadamente un 52.37% de los votos. Esta predicción asume que la relación entre el crecimiento económico y el porcentaje de votos observada en el pasado se mantiene constante, y de forma lineal.
+
+## Problema 5
+
+Consideramos el conjunto de datos `datos2.csv`, el cual surge en un estudio sobre factores que pueden influir en el peso de recién nacidos. Este conjunto contiene un total de 189 observaciones y presenta las siguientes variables:
+
+1. **age**: Edad de la madre.
+2. **lwt**: Peso de la madre en el último ciclo de menstruación.
+3. **race**: Etnicidad de la madre (1=blanca, 2=negra, 3=otra).
+4. **smoke**: Indicador de si la madre fumaba durante el embarazo.
+5. **ptd**: Indicador de si la madre ha tenido bebés prematuros antes o no.
+6. **ht**: Indicador de si la madre ha tenido hipertensión o no.
+7. **ui**: Nivel de irritabilidad de la uterina.
+8. **ftv**: Número de visitas al médico durante los primeros tres meses del embarazo.
+9. **bwt**: Peso del recién nacido (=Y).
+
+El objetivo es buscar visualizaciones informativas de los datos y ajustar y discutir modelos de regresión lineal para predecir el peso del recién nacido en función de las demás variables.
+
+Es importante destacar que la variable **race** no tiene una escala métrica, sino que es nominal. Los valores son meramente etiquetas, por lo que no tiene sentido calcular "race x race". La solución consiste en introducir dos variables binarias en lugar de la variable original. Una variable binaria que indica si la raza es blanca o no, y otra si es negra o no. Esto se puede lograr automáticamente en R convirtiendo la variable en un tipo factor: `factor(race)`. En Python, se puede realizar utilizando la función `C(race)` con la "C" de categoría.
+
+### Solución
+
+Para realizar la correcta exploración y análisis, primero se deben importar los datos.
+
+```{r}
+datos2 <- read.csv("datos2(1).csv")
+```
+Ahora, debido a la consideración de que el campo es race es nominal y no métrica, es necesario hacer la conversión de la variable en tres categóricas diferentes.
+
+```{r}
+# Convertir 'race' en factor y luego en variables dummy
+datos2$race <- factor(datos2$race)
+datos2 <- cbind(datos2, model.matrix(~race - 1, data = datos2))
+```
+
+#### Visualizaciones
+Vamos a realizar una exploración visual de los datos. Al ser una gran cantidad de variables una buena alternativa es utilizar gráficos que engloben varias variables. Para coparar las variables cuantitativas se utiliza un gráfico de pares. 
+
+```{r}
+# Gráfico de pares
+pairs(~ bwt + age + lwt + ftv, data = datos2, main = "Gráficos de Pares")
+
+```
+En este gráfico la primero columna representa la variable **bwt** que es el peso del bebe, comparada en dispersión con las variables de edad, peso de la madre en el último ciclo y visitas al médico. Es claro que ninguna de estas variables esta correlacionada con el peso del bebe, las gráficas no muestran correlación de ningún tipo según se puede observar a simple vista.
+
+Para las variables cualitativas, podemos realizar diagramas de caja para compararlas.
+
+```{r}
+# Diagramas de caja
+par(mfrow = c(2, 3)) # Ajustar el layout para múltiples gráficos
+boxplot(bwt ~ smoke, data = datos2, main = "Peso del Bebé vs Fumar")
+boxplot(bwt ~ ptd, data = datos2, main = "Peso del Bebé vs Prematuros")
+boxplot(bwt ~ ht, data = datos2, main = "Peso del Bebé vs Hipertensión")
+boxplot(bwt ~ ui, data = datos2, main = "Peso del Bebé vs Irritabilidad Uterina")
+boxplot(bwt ~ race, data = datos2, main = "Peso del Bebé vs Raza")
+  
+```
+
+Para estas variables, si podemos realizar algunas conclusiones a simple vista. Las variables en las que existe una diferencia evidente en cuanto al peso del bebe son la irritabilidad uterina, la hipertensión, bebes prematuros y en menor medida fumar. En donde no es posible apreciar una diferencia significativa es en la raza del bebe, de hecho las medias parecen estan casi en el mismo sitio.
+
+Una mejor práctica puede ser la visualización por mapa de calor. Realizamos un cálculo de correlación para determinar la relación existente entre las variables. 
+
+```{r}
+# Calcular la matriz de correlación
+cor_matriz <- cor(datos2[, sapply(datos2, is.numeric)])
+
+# Visualizar la matriz de correlación como un mapa de calor
+library(reshape2)
+ggplot(data = melt(cor_matriz), aes(Var1, Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(midpoint = 0, limit = c(-1, 1), space = "Lab", 
+                       name="Correlación") +
+  theme_minimal() +
+  coord_fixed()
+
+```
+
+En el mapa anterior, si comparamos todas las variables con el peso del bebe. La correlación existente en su mayoria es muy *tenue*, es decir podemos categorizar la correlación menor a $\pm$ 0.5 de todas las variables con el peso del bebe. La variable mas correlacionada con el peso del bebe es la irritabilidad uterina.
+
+#### Modelo de regresión lineal
+Ahora vamos a ejecutar un módelo de regresión lineal con las variables mas correlacionadas. Tomemos la irritación uterina, y el fumar de la madre. Vamos a preguntarnos, que tan bien podemos predecir el peso en función de si la madre fuma o tiene irritación uterina.
+
+```{r}
+# Ajuste del Modelo de Regresión Lineal
+modelo1 <- lm(bwt ~ ui + smoke, data = datos2)
+summary(modelo1)
+```
+
+El modelo de regresión lineal ajustado para predecir el peso del recién nacido (\( bwt \)) en función de la irritabilidad uterina (\( ui \)) y si la madre fuma (\( smoke \)) es el siguiente:
+
+$$
+\text{bwt} = 3128.63 - 559.20 \times \text{ui} - 258.48 \times \text{smoke}
+$$
+
+Podemos intepretar los coeficientes de la siguiente manera:
+- **Intercepto (3128.63)**: Este valor representa el peso promedio estimado de un recién nacido cuando tanto `ui` como `smoke` son 0. Es decir, para madres sin irritabilidad uterina y que no fuman.
+- **Coeficiente de `ui` (-559.20)**: Por cada unidad que aumenta la irritabilidad uterina, el peso promedio del recién nacido disminuye en 559.20 gramos, manteniendo constante el efecto de fumar.
+- **Coeficiente de `smoke` (-258.48)**: Si la madre fuma, el peso promedio del recién nacido disminuye en 258.48 gramos, manteniendo constante la irritabilidad uterina.
+
+Podemos ver en los resultados del modelo que tan significativo es el mismo:
+
+- El p-valor asociado con el coeficiente de `ui` es 0.000114, lo que indica que la irritabilidad uterina es un predictor estadísticamente significativo del peso del recién nacido.
+- El p-valor para `smoke` es 0.013150, lo que también indica una relación estadísticamente significativa entre fumar durante el embarazo y el peso del recién nacido.
+
+La calidad del modelo esta determinada por el R ajustao y el error estandar residual.
+
+- El **R-cuadrado ajustado** es 0.101, lo que sugiere que aproximadamente el 10.1% de la variabilidad en el peso del recién nacido es explicada por este modelo. Aunque esto indica alguna relación, hay una gran cantidad de variabilidad en el peso del recién nacido que no es explicada por estos dos factores.
+- El **error estándar residual** es 691.4, indicando la variabilidad típica de las predicciones del modelo respecto a los valores reales.
+
+La irritabilidad uterina y el hábito de fumar en la madre tienen un impacto negativo significativo en el peso del recién nacido. Aunque el modelo proporciona cierta información útil, hay otros factores no incluidos en el modelo que también afectan el peso del recién nacido, lo que se refleja en el R-cuadrado ajustado relativamente bajo.
+
+Podemos considerar un segundo modelo que incluya las otras variables mas correlacionadas con el peso del bebe. Tomemos la irritación uterina, el fumar de la madre, la hipertensión y bebes prematuros.
+
+```{r}
+# Ajuste del Modelo de Regresión Lineal
+modelo2 <- lm(bwt ~ ui + smoke + ptd + ht, data = datos2)
+summary(modelo2)
+```
+
+
+
+### Discusión y Conclusiones del Modelo de Regresión Lineal Mejorado
+
+#### Modelo Utilizado
+El modelo de regresión lineal ajustado para predecir el peso del recién nacido (\( bwt \)) en función de la irritabilidad uterina (\( ui \)), si la madre fuma (\( smoke \)), si ha tenido bebés prematuros antes (\( ptd \)) y si ha tenido hipertensión (\( ht \)) es el siguiente:
+
+$$
+\text{bwt} = 3187.58 - 547.66 \times \text{ui} - 216.72 \times \text{smoke} - 279.59 \times \text{ptd} - 513.85 \times \text{ht}
+$$
+
+- **Intercepto (3187.58)**: Este valor representa el peso promedio estimado de un recién nacido cuando todas las variables predictoras son 0.
+- **Coeficiente de `ui` (-547.66)**: Por cada unidad que aumenta la irritabilidad uterina, el peso promedio del recién nacido disminuye en 547.66 gramos.
+- **Coeficiente de `smoke` (-216.72)**: Si la madre fuma, el peso promedio del recién nacido disminuye en 216.72 gramos.
+- **Coeficiente de `ptd` (-279.59)**: Si la madre ha tenido bebés prematuros antes, el peso promedio del recién nacido disminuye en 279.59 gramos.
+- **Coeficiente de `ht` (-513.85)**: Si la madre ha tenido hipertensión, el peso promedio del recién nacido disminuye en 513.85 gramos.
+
+- Todos los coeficientes son estadísticamente significativos, como lo indican sus p-valores. Esto sugiere que cada uno de estos factores tiene un impacto significativo en el peso del recién nacido.
+
+- El **R-cuadrado ajustado** es 0.1412, lo que indica que aproximadamente el 14.12% de la variabilidad en el peso del recién nacido es explicada por este modelo. Esto es una mejora respecto al modelo anterior, pero aún hay una gran cantidad de variabilidad no explicada.
+- El **error estándar residual** es 675.8, que es ligeramente menor que en el modelo anterior, indicando una mejor precisión en las predicciones.
+
+Podemos concluir lo siguiente: La irritabilidad uterina, el hábito de fumar, tener antecedentes de bebés prematuros y la hipertensión en la madre son factores significativos que afectan negativamente el peso del recién nacido. Aunque el modelo mejorado explica una mayor proporción de la variabilidad en el peso del recién nacido en comparación con el modelo anterior, aún hay otros factores no considerados que pueden influir en el peso al nacer. Este modelo puede ser útil para identificar y cuantificar los riesgos asociados con el bajo peso al nacer, pero debe ser utilizado como parte de un enfoque más amplio que incluya otros factores y consideraciones clínicas.
+
+
+## Problema 6
+
+Para una muestra de 14 muchachas elegidas al azar se tienen las mediciones del ancho de su cara a la edad de 5 a~nos y 6 a~nos. Haz una prueba de hipótesis para verificar si en promedio la diferencia entre las dos mediciones es 0.2 pulgadas $\alpha$ = 0:1.
+
+### Solución
+
+Para realizar una prueba de hipótesis para verificar si en promedio la diferencia entre las dos mediciones, los 5 años y los 6 años, es 0.2 pulgadas, podemos utilizar una prueba t de muestras emparejadas. En este caso, estamos interesados en probar la hipótesis nula de que la diferencia media es 0.2 contra la hipótesis alternativa de que no es 0.2.
+
+Es decir
+
+$$ 
+H_0: \mu_d = 0.2 \qquad H_a : \mu_d \neq 0.2
+$$
+
+Donde \( \mu_d \) representa la diferencia media entre las mediciones a los 5 años y a los 6 años. La hipótesis nula establece que la diferencia media es exactamente 0.2 pulgadas. La prueba t para muestras emparejadas que se propone realizar busca probar esta hipótesis.
+
+Primero necesitamos cargar los datos
+
+```{r}
+# Datos de las mediciones a los 5 y 6 años
+mediciones_5 <- c(7.33, 7.49, 7.27, 7.93, 7.56, 7.81, 7.46, 6.94, 7.49, 7.44, 7.95, 7.04, 7.10, 7.64)
+mediciones_6 <- c(7.53, 7.70, 7.46, 8.21, 7.81, 8.01, 7.72, 7.13, 7.68, 7.66, 8.11, 7.20, 7.25, 7.79)
+```
+
+Hay que calcular las diferencias entre las mediciones
+
+```{r}
+# Calcular la diferencia entre las mediciones
+diferencias <- mediciones_6 - mediciones_5
+```
+
+Ahora realizamos la prueba de hipótesis con un nivel de significancia $\alpha = 0.1$
+
+```{r}
+# Realizar la prueba t para muestras emparejadas
+t_test_result <- t.test(diferencias, mu = 0.2, alternative = "two.sided", conf.level = 0.9)
+
+# Decidir si rechazar o no la hipótesis nula
+t_test_result
+```
+
+El valor-p es significativamente alto (0.9486), lo cual está muy por encima del nivel de significancia elegido (\( \alpha = 0.1 \)). Esto indica que no hay suficiente evidencia para rechazar la hipótesis nula. 
+
+El intervalo de confianza al 90% para la diferencia media está entre 0.1814695 y 0.2199591 pulgadas. Esto incluye el valor de 0.2 pulgadas, lo cual está en línea con no rechazar la hipótesis nula.
+
+La media estimada de las diferencias es 0.2007143, lo cual está muy cerca del valor hipotético de 0.2 pulgadas.
+
+Con base en estos resultados, se concluye que no hay evidencia estadística suficiente para afirmar que la diferencia promedio en el ancho de la cara entre los 5 y 6 años es diferente de 0.2 pulgadas. Esto sugiere que, en promedio, el ancho de la cara de las muchachas en la muestra aumentó en 0.2 pulgadas entre estas edades.
