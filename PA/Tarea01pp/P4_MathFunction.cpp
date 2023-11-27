@@ -36,8 +36,8 @@ double Pow(double a, double b) {
 }
 
 int main() {
-    // Declarando un apuntador a función que toma dos doubles y devuelve un double
-    double (*operationPtr)(double, double) = nullptr;
+    // Apuntador a función
+    double (*operationPtr)(double, double) = nullptr; // Apuntamos al apuntador nulo
     double x, y;
     char operation;
 

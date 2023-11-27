@@ -3,13 +3,13 @@ OBJECT_DIR = ./build/Debug
 TARGET_DIR = ./build
 
 # Target name
-LINK_TARGET = $(TARGET_DIR)/EDO_System
+LINK_TARGET = $(TARGET_DIR)/EDO_Solution
 
 # Macro with object files
 _OBJS =  \
  EDO.o \
  matrix.o \
- EDO_System.o \
+ EDO_Solution.o \
 
 OBJS = $(patsubst %,$(OBJECT_DIR)/%,$(_OBJS))
 
@@ -29,7 +29,7 @@ $(OBJECT_DIR)/%.o : %.c | $(OBJECT_DIR)
 	gcc -g -o $@ -c $<
 
 # Dependency Rules
-$(OBJECT_DIR)/EDO_System.o : EDO_System.c EDO.h matrix.h
+$(OBJECT_DIR)/EDO_Solution.o : EDO_Solution.c EDO.h matrix.h
 $(OBJECT_DIR)/EDO.o : EDO.c EDO.h
 $(OBJECT_DIR)/matrix.o : matrix.c matrix.h
 

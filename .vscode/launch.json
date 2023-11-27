@@ -19,7 +19,7 @@
                     "ignoreFailures": true
                 }
             ],
-            "preLaunchTask": "C/C++: clang compilar archivo activo",  // Esto se conectará con tu tarea de construcción en tasks.json
+            "preLaunchTask": "C/C++: clang compilar archivo activo",
             "osx": {
                 "MIMode": "lldb"
             },
@@ -36,6 +36,19 @@
                 "programOutput": true,
                 "exceptions": true
             }
+        },
+        {
+            "name": "C/C++: clang++ Compilar y depurar el archivo activo",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${fileDirname}/${fileBasenameNoExtension}",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "lldb",
+            "preLaunchTask": "C/C++: clang++ compilar archivo activo"
         }
     ]
 }
